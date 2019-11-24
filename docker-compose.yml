@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+  proxy:
+    image: malferov/proxy:0.2.1
+    ports:
+    - "5001:5001"
+    environment:
+      HTTP_PROXY: http://rpardini:3128
+      PROXY_APPS: ""
+      GIN_MODE: release
+    entrypoint: bash
+    command: -c "sleep 2
+      && curl rpardini:3128/ca.crt -o /etc/pki/ca-trust/source/anchors/ca.crt
+      && update-ca-trust
+      && ./proxy 5001"
+    depends_on:
+    - rpardini
+
+  rpardini:
+    image: tiangolo/docker-registry-proxy
+    environment:
+      AUTH_REGISTRIES_DELIMITER: ";;;"
+      AUTH_REGISTRY_DELIMITER: ":::"
+      REGISTRIES: "gcr.io registry.gitlab.com"
+      AUTH_REGISTRIES: ""
+    volumes:
+      - ./data/docker_mirror_cache:/docker_mirror_cache
+      - ./data/docker_mirror_certs:/ca
