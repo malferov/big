@@ -10,7 +10,7 @@ spec:
         app: proxy
     spec:
       containers:
-        - image: <private_registry>/proxy:0.2.1
+        - image: registry.gitlab.com/bigdataboutique/container-registry-proxy:2019-11-28-2044-64db82838
           name: proxy
           env:
           - name: GIN_MODE
@@ -18,12 +18,14 @@ spec:
           - name: HTTP_PROXY
             value: "http://rpardini:3128"
           - name: PROXY_APPS
-            value: <proxy_apps>
+            value: eyfo-api:registry.gitlab.com/eyfo/api:default
+          - name: PROXY_GITLAB
+            value: <username:access_token>
           command: ["bash"]
           args: ["-c", "sleep 2
             && curl rpardini:3128/ca.crt -o /etc/pki/ca-trust/source/anchors/ca.crt
             && update-ca-trust
-            && ./proxy 5001"]
+            && ./proxy"]
           ports:
             - containerPort: 5001
 ---
@@ -47,8 +49,8 @@ spec:
           - name: AUTH_REGISTRY_DELIMITER
             value: ":::"
           - name: REGISTRIES
-            value: "gcr.io registry.gitlab.com"
+            value: "gcr.io"
           - name: AUTH_REGISTRIES
-            value: <auth_registries>
+            value: "gcr.io:::_json_key:::${JSON_KEY}"
           ports:
             - containerPort: 3128

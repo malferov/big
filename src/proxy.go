@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"flag"
 	"github.com/gin-gonic/gin"
+	"github.com/golang/glog"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -26,18 +28,18 @@ const (
 )
 
 var (
-	version  = "dev"
-	commit   = "none"
-	date     = "unknown"
-	hostname string
-	token    Token
-	apps     = make(map[string]App)
+	version          = "dev"
+	commit           = "none"
+	date             = "unknown"
+	hostname, gitlab string
+	token            Token
+	apps             = make(map[string]App)
 )
 
 func setupRouter() *gin.Engine {
 	entries := strings.Split(os.Getenv("PROXY_APPS"), " ")
 	if len(entries[0]) < 1 {
-		log.Fatal("please set env.PROXY_APPS in format <app>:<registry>:<namespace> ...")
+		glog.Fatal("please set env.PROXY_APPS in format <app>:<registry>:<namespace> ...")
 	}
 	for _, e := range entries {
 		parts := strings.Split(e, ":")
@@ -53,13 +55,13 @@ func setupRouter() *gin.Engine {
 }
 
 func main() {
-        // todo use flag.Parse()
-	if len(os.Args) < 2 {
-		log.Fatal("please specify port argument")
-	}
+	var port string
+	flag.StringVar(&port, "port", "5001", "server listening port")
+	flag.Parse()
 
-	port := os.Args[1]
 	hostname, _ = os.Hostname()
+	gitlab = base64.StdEncoding.EncodeToString(
+		[]byte(os.Getenv("PROXY_GITLAB")))
 
 	router := setupRouter()
 	router.Run(":" + port)
@@ -95,6 +97,7 @@ func reverseProxy(writer http.ResponseWriter, request *http.Request) {
 	var err error
 	client := &http.Client{}
 
+	glog.Info("--> GET " + request.URL.String())
 	req, err = http.NewRequest("GET", request.URL.String(), nil)
 	if token.Value != "" {
 		req.Header.Set("Authorization", "Bearer "+token.Value)
@@ -106,24 +109,40 @@ func reverseProxy(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	defer resp.Body.Close()
+	glog.Infof("<-- %d", resp.StatusCode)
 
 	// 401 -> auth server request
 	if resp.StatusCode == http.StatusUnauthorized {
 		url := parseChallenge(resp.Header.Get("Www-Authenticate"))
-		resp, err = http.Get(url.String())
+		glog.Info("--> auth " + url.String())
+		// unless cache supports gitlab auth
+		if url.Host == "gitlab.com" {
+			c := &http.Client{Transport: &http.Transport{Proxy: nil}}
+			r, _ := http.NewRequest("GET", url.String(), nil)
+			glog.Infof("--> token %d", len(gitlab))
+			if len(gitlab) > 0 {
+				r.Header.Set("Authorization", "Basic "+gitlab)
+			}
+			resp, err = c.Do(r)
+		} else {
+			resp, err = http.Get(url.String())
+		}
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusServiceUnavailable)
 			return
 		}
+		glog.Infof("<-- auth %d", resp.StatusCode)
 
 		if resp.StatusCode == http.StatusOK {
 			json.NewDecoder(resp.Body).Decode(&token)
 			req.Header.Set("Authorization", "Bearer "+token.Value)
+			glog.Info("--> seq " + req.URL.String())
 			resp, err = client.Do(req)
+			glog.Infof("<-- seq %d", resp.StatusCode)
 		} else {
 			s, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
-				log.Fatal(err)
+				glog.Fatal(err)
 			}
 			http.Error(writer, string(s), resp.StatusCode)
 			return
