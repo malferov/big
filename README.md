@@ -28,13 +28,13 @@ envsubst < deployment.yml | kubectl apply -f -
 ```
 deploy application via `kubectl`
 ```
-# ssl certificate for r.bigdataboutique.com domain
+# ssl certificate for r.big.com domain
 kubectl create secret tls proxy-tls --cert=<file.crt> --key=<file.key>
 kubectl apply -f deployment.yml # or command above
 kubectl apply -f service.yml
 kubectl apply -f ingress.yml
 ```
-create `dns` record for r.bigdataboutique.com hostname
+create `dns` record for r.big.com hostname
 ```
 kubectl get ingress proxy -o=jsonpath="{.status.loadBalancer.ingress[].ip}"
 ```
@@ -42,9 +42,9 @@ kubectl get ingress proxy -o=jsonpath="{.status.loadBalancer.ingress[].ip}"
 ## testing
 ```
 # check version
-curl https://r.bigdataboutique.com/version -v | jq
+curl https://r.big.com/version -v | jq
 # pull the image
-docker pull r.bigdataboutique.com/123456/<app>:<tag>
+docker pull r.big.com/123456/<app>:<tag>
 ```
 
 ## debugging
