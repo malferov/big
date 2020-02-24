@@ -1,4 +1,4 @@
-# registry proxy
+# container registry proxy
 
 ## build proxy application
 ```
