@@ -1,0 +1,56 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: proxy
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: proxy
+    spec:
+      containers:
+        - image: registry.gitlab.com/big/registry-proxy:ID
+          name: proxy
+          env:
+          - name: GIN_MODE
+            value: release
+          - name: HTTP_PROXY
+            value: "http://rpardini:3128"
+          - name: PROXY_APPS
+            value: api:registry.gitlab.com/api:tag
+          - name: PROXY_GITLAB
+            value: <username:access_token>
+          command: ["bash"]
+          args: ["-c", "sleep 2
+            && curl rpardini:3128/ca.crt -o /etc/pki/ca-trust/source/anchors/ca.crt
+            && update-ca-trust
+            && ./proxy"]
+          ports:
+            - containerPort: 5001
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: rpardini
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: rpardini
+    spec:
+      containers:
+        - image: tiangolo/docker-registry-proxy
+          name: rpardini
+          env:
+          - name: AUTH_REGISTRIES_DELIMITER
+            value: ";;;"
+          - name: AUTH_REGISTRY_DELIMITER
+            value: ":::"
+          - name: REGISTRIES
+            value: "gcr.io"
+          - name: AUTH_REGISTRIES
+            value: "gcr.io:::_json_key:::${JSON_KEY}"
+          ports:
+            - containerPort: 3128

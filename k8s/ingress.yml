@@ -1,0 +1,16 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: proxy
+spec:
+  tls:
+  - hosts:
+    - r.big.com
+    secretName: proxy-tls
+  rules:
+  - http:
+      paths:
+      - path: /*
+        backend:
+          serviceName: proxy
+          servicePort: 5001
