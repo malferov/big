@@ -5,7 +5,7 @@ metadata:
 spec:
   tls:
   - hosts:
-    - r.bigdataboutique.com
+    - r.big.com
     secretName: proxy-tls
   rules:
   - http:

@@ -8,7 +8,7 @@ services:
     environment:
       HTTP_PROXY: http://rpardini:3128
       PROXY_GITLAB: "gitlab-ci-token:token"
-      PROXY_APPS: "api:registry.gitlab.com:eyfo"
+      PROXY_APPS: "api:registry.gitlab.com:app"
       GIN_MODE: release
     entrypoint: bash
     command: -c "sleep 2
